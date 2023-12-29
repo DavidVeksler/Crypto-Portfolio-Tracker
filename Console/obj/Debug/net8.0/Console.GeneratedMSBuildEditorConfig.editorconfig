@@ -8,6 +8,6 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = Console
-build_property.ProjectDir = C:\Users\veksl\Projects\Crypto-Portfolio-Tracker\Portfolio Tracker\Console\
+build_property.ProjectDir = C:\Users\veksl\Projects\Crypto-Portfolio-Tracker\Console\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
