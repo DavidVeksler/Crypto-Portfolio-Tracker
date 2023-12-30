@@ -4,9 +4,16 @@
 //TrackerConsolerRenderer.RenderCryptoTickerAsync();
 
 
-var key = Settings.XPubKeys.First();
-var address = new BitcoinAddressGenerator(key.Xpub).GetBitcoinAddress(0, key.ScriptPubKeyType);
-System.Console.WriteLine(address);
+using Console.Bitcoin;
+
+var key = Settings.XPubKeys[1];
+var address = new BitcoinAddressGenerator(key.Xpub).GetBitcoinAddress(16, key.ScriptPubKeyType);
+
+
+var client = new ElectrumClient();
+var balance = client.GetBalanceAsync(address).Result;
+
+System.Console.WriteLine(balance);
 
 
 

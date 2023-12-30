@@ -76,9 +76,7 @@ public class Settings
                                                   .Select(x => new XpubKeyPair
                                                   {
                                                       Xpub = x["Xpub"],
-                                                      ScriptPubKeyType = Enum.TryParse<ScriptPubKeyType>(x["ScriptPubKeyType"], out var result)
-                                                     ? result
-                                                     : throw new ArgumentException($"Invalid ScriptPubKeyType: {x["ScriptPubKeyType"]}")
+                                                      ScriptPubKeyType = ParseScriptPubKeyType(x["ScriptPubKeyType"])
                                                   })
                                                   .ToList();
 
@@ -87,6 +85,21 @@ public class Settings
         }
     }
 
-    
+    private static ScriptPubKeyType ParseScriptPubKeyType(string scriptPubKeyType)
+    {
+        //ScriptPubKeyType.SegwitP2SH
+        //    ScriptPubKeyType.Segwit
+        //    ScriptPubKeyType.Legacy
+
+        if (Enum.TryParse<ScriptPubKeyType>(scriptPubKeyType, out var result))
+        {
+            return result;
+        }
+
+        // Handle the case where parsing fails, e.g., throw an exception or return a default value
+        throw new ArgumentException($"Invalid ScriptPubKeyType: {scriptPubKeyType}");
+    }
+
+
 
 }
