@@ -1,27 +1,40 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 
-TrackerConsolerRenderer.RenderCryptoTickerAsync();
-
-
+using Console;
 using Console.Bitcoin;
+using Console.Services;
 
-var key = Settings.XPubKeys[1];
 
-var address = new BitcoinAddressGenerator(key.Xpub).GetBitcoinAddress(72, key.ScriptPubKeyType);
-System.Console.WriteLine(address.ToString());   
+var service = new CoinGeckoService();
 
-var client = new ElectrumClient();
+while (true)
+{
+    var info = service.GetCurrencyInfoAsync("usd", Settings.PricesToCheck).Result;
+    TrackerConsolerRenderer.RenderCryptoPrices(info);
 
-var valueOfWallet = client.GetWalletBalanceAsync(key.Xpub, key.ScriptPubKeyType).Result;
+    var bitcoinPrice = info.Where(r=> r.Name=="Bitcoin").First().CurrentPrice;
 
-System.Console.WriteLine("BTC: " + valueOfWallet);
-System.Console.WriteLine("Value In USD: " + valueOfWallet);
-System.Console.ReadLine();
+    foreach (var key in Settings.XPubKeys)
+    {
+        var client = new ElectrumClient();
+        var valueOfWallet = client.GetWalletBalanceAsync(key.Xpub, key.ScriptPubKeyType).Result;
 
-//var balance = ElectrumClient.SatoshiToBTC(client.GetBalanceAsync(address).Result.Result.Confirmed);
+        System.Console.WriteLine($"Wallet ({key.Xpub}) Value:");
+        System.Console.WriteLine($"    In BTC: {valueOfWallet:N8}"); // 'N8' formats number with 8 decimal places
+        System.Console.WriteLine($"    In USD: {(valueOfWallet * bitcoinPrice):C2}"); // 'C2' formats as currency with 2 decimal places
+    }
 
-//System.Console.WriteLine(balance);
+    // Start a 30-second countdown
+    for (int i = 30; i > 0; i--)
+    {
+        System.Console.SetCursorPosition(0, System.Console.CursorTop);
+        System.Console.Write($"Refreshing in {i} seconds... ");
+        await Task.Delay(1000); // Wait for 1 second
+    }
+    
 
+    System.Console.Clear(); // Clear the console for the next update
+}
 
 
