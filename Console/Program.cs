@@ -1,13 +1,12 @@
-﻿
+﻿// See https://aka.ms/new-console-template for more information
 
 
-// See https://aka.ms/new-console-template for more information
-using Console.Services;
+//TrackerConsolerRenderer.RenderCryptoTickerAsync();
 
-System.Console.WriteLine("Hello, World!");
 
-var service = new CoinGeckoService();
+var key = Settings.XPubKeys.First();
+var address = new BitcoinAddressGenerator(key.Xpub).GetBitcoinAddress(0, key.ScriptPubKeyType);
+System.Console.WriteLine(address);
 
-var info = service.GetCurrencyInfoAsync("usd", "bitcoin").Result;
 
-System.Console.WriteLine(info);
+
