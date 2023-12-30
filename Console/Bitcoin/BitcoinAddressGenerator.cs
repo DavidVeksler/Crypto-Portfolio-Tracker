@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System;
 using NBitcoin;
 using NBitcoin.DataEncoders;
+using System.Diagnostics;
 
 public class BitcoinAddressGenerator
 {
@@ -29,13 +30,13 @@ public class BitcoinAddressGenerator
     }
 
     public BitcoinAddressGenerator(string xpubKey)
-    {        
+    {
         if (xpubKey.StartsWith("zpub"))
         {
             xpubKey = ZpubToXpub(xpubKey);
         }
 
-        extKey = ExtPubKey.Parse(xpubKey,Network.Main);
+        extKey = ExtPubKey.Parse(xpubKey, Network.Main);
     }
 
     public string GetBitcoinAddress(int index, ScriptPubKeyType type)
@@ -45,9 +46,19 @@ public class BitcoinAddressGenerator
             throw new ArgumentException("Index must be non-negative.");
         }
 
-        //if (type == ScriptPubKeyType.SegwitP2SH)
-
-        BitcoinAddress address = extKey.Derive((uint)index).GetPublicKey().GetAddress(type, Network.Main);
-        return address.ToString();
+        var newAddress = extKey.Derive(0).Derive((uint)index).PubKey.GetAddress(type, Network.Main);
+        Debug.WriteLine(newAddress);
+        return newAddress.ToString();
     }
+
+//    public string GetBitcoinPublicKey(int index, ScriptPubKeyType type)
+//    {
+//        if (index < 0)
+//        {
+//            throw new ArgumentException("Index must be non-negative.");
+//        }        
+
+//        var pubkey = extKey.Derive((uint)index).GetPublicKey();
+//        return pubkey.ToString();
+//    }
 }
