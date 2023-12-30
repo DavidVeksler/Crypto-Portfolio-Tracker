@@ -13,12 +13,14 @@
     "ApiKey": ""
 
   },
+  //Optional - Get Key "here":  https://support.coingecko.com/hc/en-us/articles/21880397454233
   "CoinGecko": {
-    "ApiKey": "CG-#######"
+    "ApiKey": ""
   },
-
+  
+  // add additional tokens here:
   "Settings": {
-    "PricesToCheck": "bitcoin, ethereum",
+    "PricesToCheck": "bitcoin, ethereum, tether, binancecoin, solana, ripple, cardano, avalanche, dogecoin, polkadoot, polygon, bitcoin-cash"
   },
 
   "XpubKeyPairs": [

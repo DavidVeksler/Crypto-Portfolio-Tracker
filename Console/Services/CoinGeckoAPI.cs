@@ -25,7 +25,8 @@ namespace Console.Services
 
         private async Task<T> FetchAsync<T>(string requestUri)
         {
-            var response = await _httpClient.GetAsync($"{requestUri}&x_cg_demo_api_key={Settings.CoinGeckoKey}");
+            
+            var response = await _httpClient.GetAsync($"{requestUri}{(Settings.CoinGeckoKey != null ? $"&x_cg_demo_api_key={Settings.CoinGeckoKey}" : "")}");
             string content = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
