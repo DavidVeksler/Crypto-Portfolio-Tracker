@@ -402,3 +402,4 @@ FodyWeavers.xsd
 *.cache
 *.cache
 .vs/Portfolio Tracker/v17/.suo
+Console/appsettings.json

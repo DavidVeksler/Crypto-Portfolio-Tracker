@@ -17,8 +17,9 @@
   "CoinGecko": {
     "ApiKey": ""
   },
-  
+
   // add additional tokens here:
+  // full list here: https://api.coingecko.com/api/v3/coins/list
   "Settings": {
     "PricesToCheck": "bitcoin, ethereum, tether, binancecoin, solana, ripple, cardano, avalanche, dogecoin, polkadoot, polygon, bitcoin-cash"
   },
