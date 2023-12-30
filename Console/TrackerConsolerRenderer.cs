@@ -1,9 +1,5 @@
 ﻿using Alba.CsConsoleFormat;
 using Console.Services;
-using System;
-using System.Linq;
-using Alba.CsConsoleFormat;
-using Console.Services;
 
 namespace Console
 {
@@ -11,11 +7,11 @@ namespace Console
     {
         public static async void RenderCryptoTickerAsync()
         {
-            var service = new CoinGeckoService();
+            CoinGeckoService service = new();
 
             while (true)
             {
-                var info = service.GetCurrencyInfoAsync("usd", Settings.PricesToCheck).Result;
+                CoinInfo[] info = service.GetCurrencyInfoAsync("usd", Settings.PricesToCheck).Result;
                 TrackerConsolerRenderer.RenderCryptoPrices(info);
 
                 // Start a 30-second countdown
@@ -34,9 +30,9 @@ namespace Console
 
         public static void RenderCryptoPrices(CoinInfo[] coins)
         {
-            var doc = new Document();
+            Document doc = new();
 
-            var grid = new Grid
+            Grid grid = new()
             {
                 Columns =
             {
@@ -60,9 +56,9 @@ namespace Console
             new Cell("24h Change %") { Color = ConsoleColor.Yellow }
         });
 
-            foreach (var coin in coins)
+            foreach (CoinInfo coin in coins)
             {
-                var priceColor = coin.PriceChangePercentage24h >= 0 ? ConsoleColor.Green : ConsoleColor.Red;
+                ConsoleColor priceColor = coin.PriceChangePercentage24h >= 0 ? ConsoleColor.Green : ConsoleColor.Red;
 
                 grid.Children.Add(new[]
                 {

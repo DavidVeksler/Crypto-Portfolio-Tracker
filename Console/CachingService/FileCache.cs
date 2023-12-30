@@ -1,10 +1,8 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace Console.CachingService
 {
-    
+
 
     public class FileCache
     {
@@ -21,12 +19,12 @@ namespace Console.CachingService
         {
             if (File.Exists(_filePath))
             {
-                var json = File.ReadAllText(_filePath);
-                _cache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
+                string json = File.ReadAllText(_filePath);
+                _cache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
             }
             else
             {
-                _cache = new Dictionary<string, string>();
+                _cache = [];
             }
         }
 
@@ -43,7 +41,7 @@ namespace Console.CachingService
 
         private void SaveCache()
         {
-            var json = JsonSerializer.Serialize(_cache);
+            string json = JsonSerializer.Serialize(_cache);
             File.WriteAllText(_filePath, json);
         }
     }

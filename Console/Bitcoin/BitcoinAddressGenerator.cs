@@ -1,17 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using System;
-using NBitcoin;
+﻿using NBitcoin;
 using NBitcoin.DataEncoders;
 using System.Diagnostics;
 
 public class BitcoinAddressGenerator
 {
-    private ExtPubKey extKey;
+    private readonly ExtPubKey extKey;
 
     public static string ZpubToXpub(string zpub)
     {
@@ -46,19 +39,19 @@ public class BitcoinAddressGenerator
             throw new ArgumentException("Index must be non-negative.");
         }
 
-        var newAddress = extKey.Derive(0).Derive((uint)index).PubKey.GetAddress(type, Network.Main);
+        BitcoinAddress newAddress = extKey.Derive(0).Derive((uint)index).PubKey.GetAddress(type, Network.Main);
         Debug.WriteLine(newAddress);
         return newAddress.ToString();
     }
 
-//    public string GetBitcoinPublicKey(int index, ScriptPubKeyType type)
-//    {
-//        if (index < 0)
-//        {
-//            throw new ArgumentException("Index must be non-negative.");
-//        }        
+    //    public string GetBitcoinPublicKey(int index, ScriptPubKeyType type)
+    //    {
+    //        if (index < 0)
+    //        {
+    //            throw new ArgumentException("Index must be non-negative.");
+    //        }        
 
-//        var pubkey = extKey.Derive((uint)index).GetPublicKey();
-//        return pubkey.ToString();
-//    }
+    //        var pubkey = extKey.Derive((uint)index).GetPublicKey();
+    //        return pubkey.ToString();
+    //    }
 }

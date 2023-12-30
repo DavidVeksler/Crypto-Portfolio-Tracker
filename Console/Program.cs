@@ -6,23 +6,23 @@ using Console.Bitcoin;
 using Console.Services;
 
 
-var service = new CoinGeckoService();
+CoinGeckoService service = new();
 
 while (true)
 {
-    var info = service.GetCurrencyInfoAsync("usd", Settings.PricesToCheck).Result;
+    CoinInfo[] info = service.GetCurrencyInfoAsync("usd", Settings.PricesToCheck).Result;
     TrackerConsolerRenderer.RenderCryptoPrices(info);
 
-    var bitcoinPrice = info.Where(r=> r.Name=="Bitcoin").First().CurrentPrice;
+    decimal bitcoinPrice = info.Where(r => r.Name == "Bitcoin").First().CurrentPrice;
 
-    foreach (var key in Settings.XPubKeys)
+    foreach (XpubKeyPair key in Settings.XPubKeys)
     {
-        var client = new ElectrumClient();
-        var valueOfWallet = client.GetWalletBalanceAsync(key.Xpub, key.ScriptPubKeyType).Result;
+        ElectrumClient client = new();
+        decimal valueOfWallet = client.GetWalletBalanceAsync(key.Xpub, key.ScriptPubKeyType).Result;
 
         System.Console.WriteLine($"Wallet ({key.Xpub}) Value:");
         System.Console.WriteLine($"    In BTC: {valueOfWallet:N8}"); // 'N8' formats number with 8 decimal places
-        System.Console.WriteLine($"    In USD: {(valueOfWallet * bitcoinPrice):C2}"); // 'C2' formats as currency with 2 decimal places
+        System.Console.WriteLine($"    In USD: {valueOfWallet * bitcoinPrice:C2}"); // 'C2' formats as currency with 2 decimal places
     }
 
     // Start a 30-second countdown
@@ -32,7 +32,7 @@ while (true)
         System.Console.Write($"Refreshing in {i} seconds... ");
         await Task.Delay(1000); // Wait for 1 second
     }
-    
+
 
     System.Console.Clear(); // Clear the console for the next update
 }

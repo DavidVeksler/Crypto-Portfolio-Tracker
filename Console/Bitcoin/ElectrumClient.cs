@@ -1,12 +1,7 @@
-﻿using Console.CachingService;
-using ElectrumXClient;
-using ElectrumXClient.Request;
+﻿using ElectrumXClient;
 using ElectrumXClient.Response;
 using NBitcoin;
 using System.Diagnostics;
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 
 namespace Console.Bitcoin
 {
@@ -18,8 +13,8 @@ namespace Console.Bitcoin
         public static string GetReversedShaHexString(string publicAddress)
         {
             BitcoinAddress address = BitcoinAddress.Create(publicAddress, Network.Main);
-            var sha = NBitcoin.Crypto.Hashes.SHA256(address.ScriptPubKey.ToBytes());
-            var reversedSha = sha.Reverse().ToArray();
+            byte[] sha = NBitcoin.Crypto.Hashes.SHA256(address.ScriptPubKey.ToBytes());
+            byte[] reversedSha = sha.Reverse().ToArray();
             return NBitcoin.DataEncoders.Encoders.Hex.EncodeData(reversedSha);
         }
 
@@ -45,9 +40,9 @@ namespace Console.Bitcoin
 
         public async Task<BlockchainScripthashGetBalanceResponse> GetBalanceAsync(string publicKey)
         {
-            var client = await ElectrumServerProvider.GetClientAsync();
+            Client client = await ElectrumServerProvider.GetClientAsync();
             Debug.WriteLine($"Fetching balance for {publicKey}");
-            var response = await client.GetBlockchainScripthashGetBalance(GetReversedShaHexString(publicKey));
+            BlockchainScripthashGetBalanceResponse response = await client.GetBlockchainScripthashGetBalance(GetReversedShaHexString(publicKey));
             Debug.WriteLine($"{publicKey} {response}");
             return response;
         }
@@ -56,25 +51,25 @@ namespace Console.Bitcoin
 
 
 
-        private static Dictionary<string, (int LastUsedIndex, DateTime Timestamp)> _addressIndexCache
-        = new Dictionary<string, (int, DateTime)>();
+        private static readonly Dictionary<string, (int LastUsedIndex, DateTime Timestamp)> _addressIndexCache
+        = [];
 
         // Use a binary search approach to find the last active index
         public async Task<int> GetLastUsedAddressIndex(string xpubKey, ScriptPubKeyType keyType, int transactionGap = 10)
         {
             // Check if a cached value exists and is still valid
-            if (_addressIndexCache.TryGetValue(xpubKey, out var cacheEntry) &&
+            if (_addressIndexCache.TryGetValue(xpubKey, out (int LastUsedIndex, DateTime Timestamp) cacheEntry) &&
                 (DateTime.UtcNow - cacheEntry.Timestamp).TotalMinutes < 30)
             {
                 return cacheEntry.LastUsedIndex;
             }
 
-            var client = await ElectrumServerProvider.GetClientAsync();
-            var generator = new BitcoinAddressGenerator(xpubKey);
+            Client client = await ElectrumServerProvider.GetClientAsync();
+            BitcoinAddressGenerator generator = new(xpubKey);
 
             // Check the first address for transactions
             string firstPublicKey = generator.GetBitcoinAddress(0, keyType);
-            var firstResponse = await client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(firstPublicKey));
+            BlockchainScripthashGetHistoryResponse firstResponse = await client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(firstPublicKey));
             if (firstResponse.Result.Count == 0)
             {
                 // No transactions found on the first address, assume wallet is empty
@@ -90,7 +85,7 @@ namespace Console.Bitcoin
                 int midIndex = (lowerBound + upperBound) / 2;
                 string publicKey = generator.GetBitcoinAddress(midIndex, keyType);
 
-                var response = await client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(publicKey));
+                BlockchainScripthashGetHistoryResponse response = await client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(publicKey));
 
                 if (response.Result.Count > 0)
                 {
@@ -113,22 +108,25 @@ namespace Console.Bitcoin
 
         internal async Task<decimal> GetWalletBalanceAsync(string xpub, ScriptPubKeyType scriptPubKeyType)
         {
-            var client = await ElectrumServerProvider.GetClientAsync();
+            Client client = await ElectrumServerProvider.GetClientAsync();
             Debug.WriteLine("Getting last used address index...");
             int lastActiveIndex = await GetLastUsedAddressIndex(xpub, scriptPubKeyType);
-            if (lastActiveIndex == -1) return 0;
+            if (lastActiveIndex == -1)
+            {
+                return 0;
+            }
 
             long runningTotalInSatoshi = 0;
-            var semaphore = new SemaphoreSlim(1); // Synchronize access
+            SemaphoreSlim semaphore = new(1); // Synchronize access
 
-            var tasks = Enumerable.Range(0, lastActiveIndex + 1).Reverse().Select(async i =>
+            IEnumerable<Task<int>> tasks = Enumerable.Range(0, lastActiveIndex + 1).Reverse().Select(async i =>
             {
                 await semaphore.WaitAsync();
                 string address = new BitcoinAddressGenerator(xpub).GetBitcoinAddress(i, scriptPubKeyType);
                 try
                 {
                     Debug.WriteLine($"Fetching balance for address at index {i}: {address}");
-                    var response = await GetBalanceAsync(address);
+                    BlockchainScripthashGetBalanceResponse response = await GetBalanceAsync(address);
 
                     int balance = int.Parse(response.Result.Confirmed) + int.Parse(response.Result.Unconfirmed);
                     Debug.WriteLine($"Balance: {balance}");
@@ -141,11 +139,11 @@ namespace Console.Bitcoin
                 }
                 finally
                 {
-                    semaphore.Release();
+                    _ = semaphore.Release();
                 }
             });
 
-            var results = await Task.WhenAll(tasks);
+            int[] results = await Task.WhenAll(tasks);
             runningTotalInSatoshi = results.Sum();
 
             return SatoshiToBTC(runningTotalInSatoshi.ToString());

@@ -5,7 +5,7 @@ namespace Console.Bitcoin
 {
     public class ElectrumServerProvider
     {
-        private static Client _client = null;
+        private static Client? _client = null;
 
         internal static async Task<Client> GetClientAsync()
         {
@@ -19,15 +19,15 @@ namespace Console.Bitcoin
 
         private static async Task<Client> ConnectToServerAsync()
         {
-            
-            foreach (var server in DefaultElectrumServers.DefaultServers.OrderBy(_ => Guid.NewGuid()).ToList())
+
+            foreach (KeyValuePair<string, Dictionary<string, string>> server in DefaultElectrumServers.DefaultServers.OrderBy(_ => Guid.NewGuid()).ToList())
             {
-                foreach (var port in server.Value)
+                foreach (KeyValuePair<string, string> port in server.Value)
                 {
                     try
                     {
                         _client = new Client(server.Key, int.Parse(port.Value), true);
-                        var version = await _client.GetServerVersion();
+                        ElectrumXClient.Response.ServerVersionResponse? version = await _client.GetServerVersion();
                         if (version is not null)
                         {
                             Debug.WriteLine($"Connected to {server.Key} on port {port.Value}");

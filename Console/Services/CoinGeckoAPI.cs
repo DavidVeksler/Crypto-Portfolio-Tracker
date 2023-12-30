@@ -1,12 +1,11 @@
-﻿using System.Diagnostics;
-using Newtonsoft.Json;
-using System.Net.Http;
+﻿using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace Console.Services
 {
     public class CoinGeckoService
     {
-        private readonly HttpClient _httpClient = new HttpClient
+        private readonly HttpClient _httpClient = new()
         {
             BaseAddress = new Uri("https://api.coingecko.com/"),
             DefaultRequestHeaders = { { "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36" } }
@@ -25,8 +24,8 @@ namespace Console.Services
 
         private async Task<T> FetchAsync<T>(string requestUri)
         {
-            
-            var response = await _httpClient.GetAsync($"{requestUri}{(Settings.CoinGeckoKey != null ? $"&x_cg_demo_api_key={Settings.CoinGeckoKey}" : "")}");
+
+            HttpResponseMessage response = await _httpClient.GetAsync($"{requestUri}{(Settings.CoinGeckoKey != null ? $"&x_cg_demo_api_key={Settings.CoinGeckoKey}" : "")}");
             string content = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {

@@ -1,17 +1,16 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Json;
 using NBitcoin;
 
 
 public class XpubKeyPair
 {
-    public string Xpub { get; set; }
+    public required string Xpub { get; set; }
     public ScriptPubKeyType ScriptPubKeyType { get; set; }
 }
 
 public class Settings
 {
-    internal static IConfigurationRoot configuration;
+    internal static IConfigurationRoot? configuration;
 
     private Settings()
     {
@@ -28,7 +27,7 @@ public class Settings
         if (!File.Exists(path + "\\appsettings.json")) { throw new Exception("appsettings.json is required"); }
 
 
-        var builder = new ConfigurationBuilder()
+        IConfigurationBuilder builder = new ConfigurationBuilder()
         .SetBasePath(path)
         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
@@ -40,7 +39,11 @@ public class Settings
     {
         get
         {
-            if (configuration == null) InitConfiguration();
+            if (configuration == null)
+            {
+                InitConfiguration();
+            }
+
             string apiKey = configuration["OpenAI:ApiKey"];
             return apiKey;
         }
@@ -50,7 +53,11 @@ public class Settings
     {
         get
         {
-            if (configuration == null) InitConfiguration();
+            if (configuration == null)
+            {
+                InitConfiguration();
+            }
+
             string apiKey = configuration["CoinGecko:ApiKey"];
             return apiKey;
         }
@@ -60,7 +67,11 @@ public class Settings
     {
         get
         {
-            if (configuration == null) InitConfiguration();
+            if (configuration == null)
+            {
+                InitConfiguration();
+            }
+
             string PricesToCheck = configuration["Settings:PricesToCheck"];
             return PricesToCheck;
         }
@@ -70,9 +81,13 @@ public class Settings
     {
         get
         {
-            if (configuration == null) InitConfiguration();            
-            var xpubKeyPairsSection = configuration.GetSection("XpubKeyPairs");
-            var xpubKeyPairs = xpubKeyPairsSection.GetChildren()
+            if (configuration == null)
+            {
+                InitConfiguration();
+            }
+
+            IConfigurationSection xpubKeyPairsSection = configuration.GetSection("XpubKeyPairs");
+            List<XpubKeyPair> xpubKeyPairs = xpubKeyPairsSection.GetChildren()
                                                   .Select(x => new XpubKeyPair
                                                   {
                                                       Xpub = x["Xpub"],
@@ -91,7 +106,7 @@ public class Settings
         //    ScriptPubKeyType.Segwit
         //    ScriptPubKeyType.Legacy
 
-        if (Enum.TryParse<ScriptPubKeyType>(scriptPubKeyType, out var result))
+        if (Enum.TryParse<ScriptPubKeyType>(scriptPubKeyType, out ScriptPubKeyType result))
         {
             return result;
         }
