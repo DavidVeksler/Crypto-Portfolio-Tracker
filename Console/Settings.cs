@@ -19,21 +19,31 @@ public class Settings
 
     private static void InitConfiguration()
     {
-        string path = Directory.GetCurrentDirectory();
-        if (!File.Exists(path + "\\appsettings.json"))
-        {
-            path = @"C:\\Users\\veksl\\Projects\\Crypto-Portfolio-Tracker\\Console";
-        }
-        if (!File.Exists(path + "\\appsettings.json")) { throw new Exception("appsettings.json is required"); }
+        string executablePath = AppDomain.CurrentDomain.BaseDirectory;
 
+        // Navigate up from the executable path to the project root
+        string projectRootPath = Directory.GetParent(executablePath).Parent?.Parent?.Parent?.FullName;
+        string appSettingsPath = Path.Combine(projectRootPath, "appsettings.json");
+
+        if (!File.Exists(appSettingsPath))
+        {
+            // If the appsettings.json file is not found in the project root, use the executable directory
+            appSettingsPath = Path.Combine(executablePath, "appsettings.json");
+            if (!File.Exists(appSettingsPath))
+            {
+                throw new FileNotFoundException("appsettings.json is required");
+            }
+        }
 
         IConfigurationBuilder builder = new ConfigurationBuilder()
-        .SetBasePath(path)
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+            .SetBasePath(Path.GetDirectoryName(appSettingsPath))
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
         configuration = builder.Build();
-
     }
+
+
+
 
     public static string OpenAIKey
     {
@@ -100,11 +110,11 @@ public class Settings
         }
     }
 
+    //Options for scriptPubKeyType: ScriptPubKeyType.SegwitP2SH
+    //    ScriptPubKeyType.Segwit
+    //    ScriptPubKeyType.Legacy
     private static ScriptPubKeyType ParseScriptPubKeyType(string scriptPubKeyType)
-    {
-        //ScriptPubKeyType.SegwitP2SH
-        //    ScriptPubKeyType.Segwit
-        //    ScriptPubKeyType.Legacy
+    {       
 
         if (Enum.TryParse<ScriptPubKeyType>(scriptPubKeyType, out ScriptPubKeyType result))
         {
