@@ -1,14 +1,102 @@
 ﻿using ElectrumXClient;
-using ElectrumXClient.Response;
 using NBitcoin;
 using System.Diagnostics;
 
 namespace Console.Bitcoin
 {
-
     public class ElectrumClient
     {
-        #region Utilities
+        private Client _client;
+
+        public ElectrumClient()
+        {
+            _client = ElectrumServerProvider.GetClientAsync().GetAwaiter().GetResult();
+        }
+
+
+        public async Task<int> GetLastUsedAddressIndexAsync(string xpubKey, ScriptPubKeyType keyType)
+        {
+            // Check cache first
+            if (_addressIndexCache.TryGetValue(xpubKey, out var cacheEntry))
+            {
+                // Check if the cached value is still recent, e.g., less than 30 minutes old
+                if ((DateTime.UtcNow - cacheEntry.Timestamp).TotalMinutes < 30)
+                {
+                    return cacheEntry.LastUsedIndex;
+                }
+            }
+
+            // Perform binary search if no valid cache entry is found
+            int lastActiveIndex = await SearchLastUsedIndex(xpubKey, keyType);
+            if (lastActiveIndex != -1)
+            {
+                CacheAddressIndex(xpubKey, lastActiveIndex);
+            }
+            return lastActiveIndex;
+        }
+
+
+        public async Task<decimal> GetWalletBalanceAsync(string xpub, ScriptPubKeyType scriptPubKeyType)
+        {
+            int lastActiveIndex = await GetLastUsedAddressIndexAsync(xpub, scriptPubKeyType);
+            return lastActiveIndex == -1 ? 0 : await CalculateTotalBalance(xpub, scriptPubKeyType, lastActiveIndex);
+        }
+
+        private async Task<int> SearchLastUsedIndex(string xpubKey, ScriptPubKeyType keyType, int addressGap = 10)
+        {
+            BitcoinAddressGenerator addressGenerator = new BitcoinAddressGenerator(xpubKey);
+            int lastActiveIndex = -1;
+            int consecutiveUnusedCount = 0;
+            int currentIndex = 0;
+
+            while (consecutiveUnusedCount < addressGap)
+            {
+                string address = addressGenerator.GenerateAddress(currentIndex, keyType);
+                var historyResponse = await _client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(address));
+                bool hasTransactions = historyResponse.Result.Count > 0;
+
+                if (hasTransactions)
+                {
+                    lastActiveIndex = currentIndex;
+                    consecutiveUnusedCount = 0; // Reset the count as a used address is found
+                }
+                else
+                {
+                    consecutiveUnusedCount++;
+                }
+
+                currentIndex++;
+            }
+
+            return lastActiveIndex; // This will be the index of the last used address
+        }
+
+
+        private async Task<decimal> CalculateTotalBalance(string xpub, ScriptPubKeyType scriptPubKeyType, int lastActiveIndex)
+        {
+            long totalBalanceInSatoshis = 0;
+            BitcoinAddressGenerator addressGenerator = new BitcoinAddressGenerator(xpub);
+
+            for (int i = 0; i <= lastActiveIndex; i++)
+            {
+                string address = addressGenerator.GenerateAddress(i, scriptPubKeyType);
+                string reversedSha = GetReversedShaHexString(address);
+
+                var balanceResponse = await _client.GetBlockchainScripthashGetBalance(reversedSha);
+                totalBalanceInSatoshis += long.Parse(balanceResponse.Result.Confirmed) + long.Parse(balanceResponse.Result.Unconfirmed);
+            }
+
+            return SatoshiToBTC(totalBalanceInSatoshis.ToString());
+        }
+
+
+        private static readonly Dictionary<string, (int LastUsedIndex, DateTime Timestamp)> _addressIndexCache = new Dictionary<string, (int, DateTime)>();
+
+        private void CacheAddressIndex(string xpubKey, int index)
+        {
+            // Cache the index along with the current timestamp
+            _addressIndexCache[xpubKey] = (index, DateTime.UtcNow);
+        }
 
         public static string GetReversedShaHexString(string publicAddress)
         {
@@ -34,122 +122,6 @@ namespace Console.Bitcoin
                 return 0;
             }
         }
-
-        #endregion
-
-
-        public async Task<BlockchainScripthashGetBalanceResponse> GetBalanceAsync(string publicKey)
-        {
-            Client client = await ElectrumServerProvider.GetClientAsync();
-            Debug.WriteLine($"Fetching balance for {publicKey}");
-            BlockchainScripthashGetBalanceResponse response = await client.GetBlockchainScripthashGetBalance(GetReversedShaHexString(publicKey));
-            Debug.WriteLine($"{publicKey} {response}");
-            return response;
-        }
-
-
-
-
-
-        private static readonly Dictionary<string, (int LastUsedIndex, DateTime Timestamp)> _addressIndexCache
-        = [];
-
-        // Use a binary search approach to find the last active index
-        public async Task<int> GetLastUsedAddressIndex(string xpubKey, ScriptPubKeyType keyType, int transactionGap = 10)
-        {
-            // Check if a cached value exists and is still valid
-            if (_addressIndexCache.TryGetValue(xpubKey, out (int LastUsedIndex, DateTime Timestamp) cacheEntry) &&
-                (DateTime.UtcNow - cacheEntry.Timestamp).TotalMinutes < 30)
-            {
-                return cacheEntry.LastUsedIndex;
-            }
-
-            Client client = await ElectrumServerProvider.GetClientAsync();
-            BitcoinAddressGenerator generator = new(xpubKey);
-
-            // Check the first address for transactions
-            string firstPublicKey = generator.GetBitcoinAddress(0, keyType);
-            BlockchainScripthashGetHistoryResponse firstResponse = await client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(firstPublicKey));
-            if (firstResponse.Result.Count == 0)
-            {
-                // No transactions found on the first address, assume wallet is empty
-                return -1;
-            }
-
-            int lowerBound = 0;
-            int upperBound = 100; // Start with a guess
-            int lastUsedIndex = -1;
-
-            while (lowerBound <= upperBound)
-            {
-                int midIndex = (lowerBound + upperBound) / 2;
-                string publicKey = generator.GetBitcoinAddress(midIndex, keyType);
-
-                BlockchainScripthashGetHistoryResponse response = await client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(publicKey));
-
-                if (response.Result.Count > 0)
-                {
-                    lastUsedIndex = midIndex;
-                    lowerBound = midIndex + 1;
-                }
-                else
-                {
-                    upperBound = midIndex - 1;
-                }
-            }
-
-            // Cache the result with the current timestamp
-            _addressIndexCache[xpubKey] = (lastUsedIndex, DateTime.UtcNow);
-
-            return lastUsedIndex;
-
-
-        }
-
-        internal async Task<decimal> GetWalletBalanceAsync(string xpub, ScriptPubKeyType scriptPubKeyType)
-        {
-            Client client = await ElectrumServerProvider.GetClientAsync();
-            Debug.WriteLine("Getting last used address index...");
-            int lastActiveIndex = await GetLastUsedAddressIndex(xpub, scriptPubKeyType);
-            if (lastActiveIndex == -1)
-            {
-                return 0;
-            }
-
-            long runningTotalInSatoshi = 0;
-            SemaphoreSlim semaphore = new(1); // Synchronize access
-
-            IEnumerable<Task<int>> tasks = Enumerable.Range(0, lastActiveIndex + 1).Reverse().Select(async i =>
-            {
-                await semaphore.WaitAsync();
-                string address = new BitcoinAddressGenerator(xpub).GetBitcoinAddress(i, scriptPubKeyType);
-                try
-                {
-                    Debug.WriteLine($"Fetching balance for address at index {i}: {address}");
-                    BlockchainScripthashGetBalanceResponse response = await GetBalanceAsync(address);
-
-                    int balance = int.Parse(response.Result.Confirmed) + int.Parse(response.Result.Unconfirmed);
-                    Debug.WriteLine($"Balance: {balance}");
-                    return balance;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"failed to get balance for #{i} ({address}):{ex}");
-                    return 0;
-                }
-                finally
-                {
-                    _ = semaphore.Release();
-                }
-            });
-
-            int[] results = await Task.WhenAll(tasks);
-            runningTotalInSatoshi = results.Sum();
-
-            return SatoshiToBTC(runningTotalInSatoshi.ToString());
-        }
-
-
 
     }
 

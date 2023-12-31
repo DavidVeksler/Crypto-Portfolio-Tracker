@@ -11,7 +11,7 @@ namespace Console
 
             while (true)
             {
-                CoinInfo[] info = service.GetCurrencyInfoAsync("usd", Settings.PricesToCheck).Result;
+                CoinInfo[] info = service.GetCurrencyInfoAsync("usd", ConfigSettings.PricesToCheck).Result;
                 TrackerConsolerRenderer.RenderCryptoPrices(info);
 
                 // Start a 30-second countdown

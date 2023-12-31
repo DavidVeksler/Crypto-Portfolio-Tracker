@@ -10,12 +10,12 @@ CoinGeckoService service = new();
 
 while (true)
 {
-    CoinInfo[] info = service.GetCurrencyInfoAsync("usd", Settings.PricesToCheck).Result;
+    CoinInfo[] info = service.GetCurrencyInfoAsync("usd", ConfigSettings.PricesToCheck).Result;
     TrackerConsolerRenderer.RenderCryptoPrices(info);
 
     decimal bitcoinPrice = info.Where(r => r.Name == "Bitcoin").First().CurrentPrice;
 
-    foreach (XpubKeyPair key in Settings.XPubKeys)
+    foreach (XpubKeyPair key in ConfigSettings.XPubKeys)
     {
         ElectrumClient client = new();
         decimal valueOfWallet = client.GetWalletBalanceAsync(key.Xpub, key.ScriptPubKeyType).Result;
