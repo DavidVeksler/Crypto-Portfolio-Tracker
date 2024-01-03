@@ -1,6 +1,8 @@
 # Crypto Portfolio Tracker
 
-Crypto Portfolio Tracker is a versatile console application that provides real-time tracking of cryptocurrency balances across different wallets. It is designed to run on Windows, Mac, and Linux platforms.
+Crypto Portfolio Tracker provides real-time tracking of cryptocurrency balances across different wallets.  Fetches price data from CoinGecko then uses BIP39 to generate your addresses from your root public key, then fetches the balances from a randomly-picked Electrum server.
+
+It is designed to run on Windows, Mac, and Linux platforms.
 
 **TO GET STARTED**: RENAME "RENAMEME appsettings.json" to "appsettings.json" and put in your xpub/zpub and the tokens you want to track. 
 
