@@ -54,7 +54,8 @@ public static class EtherscanBalanceChecker
             if (BigInteger.TryParse(balanceString, out BigInteger balance))
             {
                 decimal etherAmount = UnitConversion.Convert.FromWei(balance);
-                balanceStrings.Add($"Account: {account}, Balance in Ether: {etherAmount:N}");
+                balanceStrings.Add(etherAmount.ToString());
+                Debug.WriteLine($"Account: {account}, Balance in Ether: {etherAmount:N}");
             }
             else
             {
