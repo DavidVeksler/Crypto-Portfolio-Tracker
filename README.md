@@ -10,7 +10,7 @@ It is designed to run on Windows, Mac, and Linux platforms.
 
 - Retrieves and displays current cryptocurrency prices and market data.
 - *Privacy Focused:* Randomly picks an Electrum server and fetches balances from individual addresses.  Your xpubs are never shared.
-- Tracks the value of Bitcoin wallets using extended public keys (xpubs & zpubs).
+- Tracks the value of Bitcoin and Ethereum wallets using extended public keys (xpubs & zpubs).
 - Supports different wallet types (Segwit, Legacy, Bech32, etc.).
 - Configurable to monitor a range of cryptocurrencies.
 - Neatly formatted, auto-refreshing and easy-to-read output.
@@ -19,7 +19,7 @@ It is designed to run on Windows, Mac, and Linux platforms.
 
 The application displays data in a well-organized table format, showing details like cryptocurrency prices, market cap, and wallet balances in both BTC and USD. 
 
-![Wallet Balances](https://github.com/DavidVeksler/Crypto-Portfolio-Tracker/blob/main/Screenshots/WalletBalances1.png)
+![Wallet Balances](https://github.com/DavidVeksler/Crypto-Portfolio-Tracker/blob/main/Screenshots/WalletBalances2.png)
 
 ## Configuration
 
