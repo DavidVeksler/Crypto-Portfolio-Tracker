@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json;
 
-
 namespace Console.Services
 {
     public class CoinInfo
@@ -83,7 +82,4 @@ namespace Console.Services
         [JsonProperty("last_updated")]
         public DateTime LastUpdated { get; set; }
     }
-
-
-
 }

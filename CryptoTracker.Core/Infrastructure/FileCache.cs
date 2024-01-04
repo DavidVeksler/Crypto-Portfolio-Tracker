@@ -2,8 +2,6 @@
 
 namespace Console.CachingService
 {
-
-
     public class FileCache
     {
         private readonly string _filePath;
@@ -45,5 +43,4 @@ namespace Console.CachingService
             File.WriteAllText(_filePath, json);
         }
     }
-
 }

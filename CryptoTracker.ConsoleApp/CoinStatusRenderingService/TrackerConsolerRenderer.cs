@@ -1,7 +1,11 @@
 ﻿using Alba.CsConsoleFormat;
 using Console.Services;
+using CryptoTracker.Core.Infrastructure.Configuration;
+using Nethereum.Contracts.QueryHandlers.MultiCall;
+using System.Reflection.Metadata;
+using Document = Alba.CsConsoleFormat.Document;
 
-namespace Console
+namespace CryptoTracker.ConsoleApp.CoinStatusRenderingService
 {
     internal class TrackerConsolerRenderer
     {
@@ -12,7 +16,7 @@ namespace Console
             while (true)
             {
                 CoinInfo[] info = service.GetCurrencyInfoAsync("usd", ConfigSettings.PricesToCheck).Result;
-                TrackerConsolerRenderer.RenderCryptoPrices(info);
+                RenderCryptoPrices(info);
 
                 // Start a 30-second countdown
                 for (int i = 30; i > 0; i--)
@@ -59,13 +63,12 @@ namespace Console
             foreach (CoinInfo coin in coins)
             {
                 ConsoleColor priceColor = coin.PriceChangePercentage24h >= 0 ? ConsoleColor.Green : ConsoleColor.Red;
-
                 grid.Children.Add(new[]
                 {
                 new Cell(coin.Name),
                 new Cell($"{coin.CurrentPrice:C}") { Color = priceColor },
                 new Cell($"{coin.MarketCap:N0}"),
-                new Cell(coin.MarketCapRank.ToString()),
+                    new Cell(coin.MarketCapRank.ToString()),
                 new Cell($"{coin.MarketCapChange24h:N2}%") { Color = coin.MarketCapChange24h >= 0 ? ConsoleColor.Green : ConsoleColor.Red },
                 new Cell($"{coin.MarketCapChangePercentage24h/100:P2}") { Color = coin.MarketCapChange24h >= 0 ? ConsoleColor.Green : ConsoleColor.Red }
             });
@@ -80,4 +83,3 @@ namespace Console
 
 
 }
-

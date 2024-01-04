@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using CryptoTracker.Core.Infrastructure.Configuration;
+using Newtonsoft.Json;
 using System.Diagnostics;
 
 namespace Console.Services
@@ -24,7 +25,6 @@ namespace Console.Services
 
         private async Task<T> FetchAsync<T>(string requestUri)
         {
-
             HttpResponseMessage response = await _httpClient.GetAsync($"{requestUri}{(ConfigSettings.CoinGeckoKey != null ? $"&x_cg_demo_api_key={ConfigSettings.CoinGeckoKey}" : "")}");
             string content = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)

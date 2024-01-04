@@ -1,7 +1,7 @@
 ﻿using ElectrumXClient;
 using System.Diagnostics;
 
-namespace Console.Bitcoin
+namespace CryptoTracker.Core.Services.Electrum
 {
     public class ElectrumServerProvider
     {
@@ -19,7 +19,6 @@ namespace Console.Bitcoin
 
         private static async Task<Client> ConnectToServerAsync()
         {
-
             foreach (KeyValuePair<string, Dictionary<string, string>> server in DefaultElectrumServers.DefaultServers.OrderBy(_ => Guid.NewGuid()).ToList())
             {
                 foreach (KeyValuePair<string, string> port in server.Value)

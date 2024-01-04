@@ -403,3 +403,4 @@ FodyWeavers.xsd
 *.cache
 .vs/Portfolio Tracker/v17/.suo
 Console/appsettings.json
+CryptoTracker.ConsoleApp/appsettings.json

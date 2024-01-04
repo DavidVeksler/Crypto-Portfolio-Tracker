@@ -1,4 +1,4 @@
-﻿namespace Console.Bitcoin
+﻿namespace CryptoTracker.Core.Services.Electrum
 {
     internal class DefaultElectrumServers
     {
@@ -6,10 +6,9 @@
         {
         {"s", "50002"},
         {"t", "50001"}
-
     };
 
-        // https://github.com/spesmilo/electrum/blob/afa1a4d22a31d23d088c6670e1588eed32f7114d/lib/network.py#L57    
+        // https://github.com/spesmilo/electrum/blob/afa1a4d22a31d23d088c6670e1588eed32f7114d/lib/network.py#L57
         public static readonly Dictionary<string, Dictionary<string, string>> DefaultServers = new()
         {
         {"electrum.bitaroo.net", DefaultPorts},
