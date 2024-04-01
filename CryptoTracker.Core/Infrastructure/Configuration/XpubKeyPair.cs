@@ -1,10 +1,9 @@
 ﻿using NBitcoin;
 
-namespace CryptoTracker.Core.Infrastructure.Configuration
+namespace CryptoTracker.Core.Infrastructure.Configuration;
+
+public class XpubKeyPair
 {
-    public class XpubKeyPair
-    {
-        public required string Xpub { get; set; }
-        public ScriptPubKeyType ScriptPubKeyType { get; set; }
-    }
+    public required string Xpub { get; set; }
+    public ScriptPubKeyType ScriptPubKeyType { get; set; }
 }

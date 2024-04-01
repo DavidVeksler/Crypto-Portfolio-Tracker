@@ -1,47 +1,43 @@
-﻿using ElectrumXClient;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using ElectrumXClient;
 
-namespace CryptoTracker.Core.Services.Electrum
+namespace CryptoTracker.Core.Services.Electrum;
+
+public class ElectrumServerProvider
 {
-    public class ElectrumServerProvider
-    {
-        private static Client? _client = null;
+    private static Client? _client;
 
-        internal static async Task<Client> GetClientAsync()
+    internal static async Task<Client> GetClientAsync()
+    {
+        if (_client == null)
         {
-            if (_client == null)
-            {
-                Debug.WriteLine("Establishing a new connection to Electrum server...");
-                _client = await ConnectToServerAsync();
-            }
-            return _client;
+            Debug.WriteLine("Establishing a new connection to Electrum server...");
+            _client = await ConnectToServerAsync();
         }
 
-        private static async Task<Client> ConnectToServerAsync()
-        {
-            foreach (KeyValuePair<string, Dictionary<string, string>> server in DefaultElectrumServers.DefaultServers.OrderBy(_ => Guid.NewGuid()).ToList())
+        return _client;
+    }
+
+    private static async Task<Client> ConnectToServerAsync()
+    {
+        foreach (var server in DefaultElectrumServers.DefaultServers.OrderBy(_ => Guid.NewGuid()).ToList())
+        foreach (var port in server.Value)
+            try
             {
-                foreach (KeyValuePair<string, string> port in server.Value)
+                _client = new Client(server.Key, int.Parse(port.Value), true);
+                var version = await _client.GetServerVersion();
+                if (version is not null)
                 {
-                    try
-                    {
-                        _client = new Client(server.Key, int.Parse(port.Value), true);
-                        ElectrumXClient.Response.ServerVersionResponse? version = await _client.GetServerVersion();
-                        if (version is not null)
-                        {
-                            Debug.WriteLine($"Connected to {server.Key} on port {port.Value}");
-                            return _client;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Failed to connect to {server.Key} on port {port.Value}: {ex.Message}");
-                        _client = null;
-                    }
+                    Debug.WriteLine($"Connected to {server.Key} on port {port.Value}");
+                    return _client;
                 }
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to connect to {server.Key} on port {port.Value}: {ex.Message}");
+                _client = null;
+            }
 
-            throw new Exception("Unable to connect to any Electrum server.");
-        }
+        throw new Exception("Unable to connect to any Electrum server.");
     }
 }

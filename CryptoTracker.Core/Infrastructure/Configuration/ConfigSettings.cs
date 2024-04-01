@@ -1,87 +1,79 @@
 ﻿using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
-namespace CryptoTracker.Core.Infrastructure.Configuration
+namespace CryptoTracker.Core.Infrastructure.Configuration;
+
+public static class ConfigSettings
 {
+    private static IConfigurationRoot? _configuration;
 
-    public static class ConfigSettings
+    static ConfigSettings()
     {
-        private static IConfigurationRoot? _configuration;        
+        InitializeConfiguration();
+    }
 
-        static ConfigSettings()
+    public static string OpenAIKey => GetConfigValue("OpenAI:ApiKey");
+    public static string CoinGeckoKey => GetConfigValue("CoinGecko:ApiKey");
+    public static string PricesToCheck => GetConfigValue("PricesToCheck");
+    public static string InfuraKey => GetConfigValue("Infura:ApiKey");
+    public static string EtherscanKey => GetConfigValue("Etherscan:ApiKey");
+
+
+    public static List<string> EthereumAddressesToMonitor
+    {
+        get
         {
-            InitializeConfiguration();
+            var addressSections = _configuration.GetSection("Ethereum:AddressesToMonitor").GetChildren();
+            var addresses = addressSections.Select(section => section.Value).ToList();
+            return addresses;
         }
+    }
 
-        private static void InitializeConfiguration()
+    public static IEnumerable<string> EthereumTokensToTrack
+    {
+        get
         {
-            string basePath = AppDomain.CurrentDomain.BaseDirectory;
-            string appSettingsPath = FindAppSettingsPath(basePath);
-
-            _configuration = new ConfigurationBuilder()
-                .SetBasePath(Path.GetDirectoryName(appSettingsPath))
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .Build();
+            var tokens = GetConfigValue("Ethereum:TokensToTrack");
+            return tokens?.Split(',') ?? Enumerable.Empty<string>();
         }
+    }
 
-        private static string FindAppSettingsPath(string basePath)
-        {
-            string[] potentialPaths = { basePath, Directory.GetParent(basePath)?.Parent?.Parent?.Parent?.FullName };
 
-            foreach (string path in potentialPaths)
+    public static List<XpubKeyPair> XPubKeys =>
+        _configuration.GetSection("XpubKeyPairs").GetChildren()
+            .Select(c => new XpubKeyPair
             {
-                string appSettingsFilePath = Path.Combine(path, "appsettings.json");
-                if (File.Exists(appSettingsFilePath))
-                {
-                    return appSettingsFilePath;
-                }
-            }
+                Xpub = c["Xpub"],
+                ScriptPubKeyType = Enum.Parse<ScriptPubKeyType>(c["ScriptPubKeyType"])
+            })
+            .ToList();
 
-            throw new FileNotFoundException("appsettings.json is required");
-        }
+    private static void InitializeConfiguration()
+    {
+        var basePath = AppDomain.CurrentDomain.BaseDirectory;
+        var appSettingsPath = FindAppSettingsPath(basePath);
 
-        private static string GetConfigValue(string key)
+        _configuration = new ConfigurationBuilder()
+            .SetBasePath(Path.GetDirectoryName(appSettingsPath))
+            .AddJsonFile("appsettings.json", true, true)
+            .Build();
+    }
+
+    private static string FindAppSettingsPath(string basePath)
+    {
+        string[] potentialPaths = { basePath, Directory.GetParent(basePath)?.Parent?.Parent?.Parent?.FullName };
+
+        foreach (var path in potentialPaths)
         {
-            return _configuration[key];
+            var appSettingsFilePath = Path.Combine(path, "appsettings.json");
+            if (File.Exists(appSettingsFilePath)) return appSettingsFilePath;
         }
 
-        public static string OpenAIKey => GetConfigValue("OpenAI:ApiKey");
-        public static string CoinGeckoKey => GetConfigValue("CoinGecko:ApiKey");
-        public static string PricesToCheck => GetConfigValue("PricesToCheck");
-        public static string InfuraKey => GetConfigValue("Infura:ApiKey");
-        public static string EtherscanKey => GetConfigValue("Etherscan:ApiKey");
+        throw new FileNotFoundException("appsettings.json is required");
+    }
 
-
-
-        public static List<string> EthereumAddressesToMonitor
-        {
-            get
-            {
-                var addressSections = _configuration.GetSection("Ethereum:AddressesToMonitor").GetChildren();
-                var addresses = addressSections.Select(section => section.Value).ToList();
-                return addresses;
-            }
-        }
-
-        public static IEnumerable<string> EthereumTokensToTrack
-        {
-            get
-            {
-                var tokens = GetConfigValue("Ethereum:TokensToTrack");
-                return tokens?.Split(',') ?? Enumerable.Empty<string>();
-            }
-        }
-
-
-        public static List<XpubKeyPair> XPubKeys =>
-            _configuration.GetSection("XpubKeyPairs").GetChildren()
-                          .Select(c => new XpubKeyPair
-                          {
-                              Xpub = c["Xpub"],
-                              ScriptPubKeyType = Enum.Parse<ScriptPubKeyType>(c["ScriptPubKeyType"])
-                          })
-                          .ToList();
-
-
+    private static string GetConfigValue(string key)
+    {
+        return _configuration[key];
     }
 }

@@ -1,46 +1,45 @@
 ﻿using System.Text.Json;
 
-namespace Console.CachingService
+namespace Console.CachingService;
+
+public class FileCache
 {
-    public class FileCache
+    private readonly string _filePath;
+    private Dictionary<string, string> _cache;
+
+    public FileCache(string filePath = "cache.cache")
     {
-        private readonly string _filePath;
-        private Dictionary<string, string> _cache;
+        _filePath = $"{Directory.GetCurrentDirectory()}\\{filePath}";
+        LoadCache();
+    }
 
-        public FileCache(string filePath = "cache.cache")
+    private void LoadCache()
+    {
+        if (File.Exists(_filePath))
         {
-            _filePath = $"{Directory.GetCurrentDirectory()}\\{filePath}";
-            LoadCache();
+            var json = File.ReadAllText(_filePath);
+            _cache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
         }
+        else
+        {
+            _cache = [];
+        }
+    }
 
-        private void LoadCache()
-        {
-            if (File.Exists(_filePath))
-            {
-                string json = File.ReadAllText(_filePath);
-                _cache = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
-            }
-            else
-            {
-                _cache = [];
-            }
-        }
+    public void AddOrUpdate(string key, string value)
+    {
+        _cache[key] = value;
+        SaveCache();
+    }
 
-        public void AddOrUpdate(string key, string value)
-        {
-            _cache[key] = value;
-            SaveCache();
-        }
+    public bool TryGetValue(string key, out string value)
+    {
+        return _cache.TryGetValue(key, out value);
+    }
 
-        public bool TryGetValue(string key, out string value)
-        {
-            return _cache.TryGetValue(key, out value);
-        }
-
-        private void SaveCache()
-        {
-            string json = JsonSerializer.Serialize(_cache);
-            File.WriteAllText(_filePath, json);
-        }
+    private void SaveCache()
+    {
+        var json = JsonSerializer.Serialize(_cache);
+        File.WriteAllText(_filePath, json);
     }
 }
