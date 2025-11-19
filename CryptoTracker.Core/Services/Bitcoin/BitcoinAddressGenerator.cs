@@ -1,7 +1,13 @@
-﻿using NBitcoin;
+using CryptoTracker.Core.Abstractions;
+using NBitcoin;
 using NBitcoin.DataEncoders;
 
-public class BitcoinAddressGenerator
+namespace CryptoTracker.Core.Services.Bitcoin;
+
+/// <summary>
+/// Generates Bitcoin addresses from extended public keys (xpub/zpub).
+/// </summary>
+public class BitcoinAddressGenerator : IAddressGenerator
 {
     private readonly ExtPubKey _extKey;
 

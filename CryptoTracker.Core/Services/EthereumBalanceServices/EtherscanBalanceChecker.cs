@@ -1,45 +1,67 @@
-﻿using System.Diagnostics;
 using System.Numerics;
-using CryptoTracker.Core.Infrastructure.Configuration;
+using CryptoTracker.Core.Abstractions;
+using CryptoTracker.Core.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Nethereum.Util;
 using Newtonsoft.Json.Linq;
 
-public static class EtherscanBalanceChecker
+namespace CryptoTracker.Core.Services.EthereumBalanceServices;
+
+/// <summary>
+/// Ethereum balance lookup service using Etherscan API.
+/// </summary>
+public class EtherscanBalanceService : IBatchEthereumBalanceService
 {
     private const string BaseUrl = "https://api.etherscan.io/api";
-    private static readonly HttpClient Client = new();
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<EtherscanBalanceService> _logger;
+    private readonly EtherscanOptions _options;
 
-    public static async Task<string[]> GetEthereumBalanceAsync(string[] addresses)
+    public EtherscanBalanceService(HttpClient httpClient, IOptions<CryptoTrackerOptions> options,
+        ILogger<EtherscanBalanceService> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+        _options = options.Value.Ethereum.Etherscan;
+    }
+
+    public async Task<string[]> GetEthereumBalanceAsync(string[] addresses)
     {
         if (addresses == null || addresses.Length == 0)
             throw new ArgumentException("No addresses provided.", nameof(addresses));
 
         var url =
-            $"{BaseUrl}?module=account&action=balancemulti&address={string.Join(',', addresses)}&tag=latest&apikey={ConfigSettings.EtherscanKey}";
+            $"{BaseUrl}?module=account&action=balancemulti&address={string.Join(',', addresses)}&tag=latest&apikey={_options.ApiKey}";
 
         try
         {
-            var response = await Client.GetAsync(url);
-            _ = response.EnsureSuccessStatusCode();
+            _logger.LogDebug("Fetching balances for {Count} Ethereum addresses from Etherscan", addresses.Length);
+
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
             var responseBody = await response.Content.ReadAsStringAsync();
 
-            return ParseBalances(responseBody);
+            var balances = ParseBalances(responseBody);
+            _logger.LogInformation("Successfully fetched {Count} balances from Etherscan", balances.Length);
+
+            return balances;
         }
-        catch (HttpRequestException e)
+        catch (HttpRequestException ex)
         {
-            Debug.WriteLine($"HttpRequestException Caught: {e.Message}");
+            _logger.LogError(ex, "HTTP request exception when fetching Ethereum balances from Etherscan");
             throw;
         }
     }
 
-    private static string[] ParseBalances(string responseBody)
+    private string[] ParseBalances(string responseBody)
     {
         var json = JObject.Parse(responseBody);
         var balancesArray = json["result"] as JArray;
 
         if (balancesArray == null || balancesArray.Count == 0)
         {
-            Debug.WriteLine("No balances found in the response.");
+            _logger.LogWarning("No balances found in Etherscan response");
             return new[] { "No balances" };
         }
 
@@ -54,11 +76,11 @@ public static class EtherscanBalanceChecker
             {
                 var etherAmount = UnitConversion.Convert.FromWei(balance);
                 balanceStrings.Add(etherAmount.ToString());
-                Debug.WriteLine($"Account: {account}, Balance in Ether: {etherAmount:N}");
+                _logger.LogDebug("Account: {Account}, Balance: {Balance} ETH", account, etherAmount);
             }
             else
             {
-                Debug.WriteLine($"Invalid or null balance string for account {account}");
+                _logger.LogWarning("Invalid or null balance string for account {Account}", account);
                 balanceStrings.Add($"Account: {account}, Invalid balance");
             }
         }

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace Console.CachingService;
+namespace CryptoTracker.Core.Infrastructure;
 
 public class FileCache
 {

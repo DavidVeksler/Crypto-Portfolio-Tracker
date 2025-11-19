@@ -1,35 +1,15 @@
-﻿using Alba.CsConsoleFormat;
-using Console.Services;
-using CryptoTracker.Core.Infrastructure.Configuration;
+using Alba.CsConsoleFormat;
+using CryptoTracker.Core.Services.CryptoPriceServices;
 using Document = Alba.CsConsoleFormat.Document;
 
 namespace CryptoTracker.ConsoleApp.CoinStatusRenderingService;
 
-internal class TrackerConsolerRenderer
+/// <summary>
+/// Console renderer for cryptocurrency price information.
+/// </summary>
+public class TrackerConsoleRenderer : IConsoleRenderer
 {
-    public static async void RenderCryptoTickerAsync()
-    {
-        CoinGeckoService service = new();
-
-        while (true)
-        {
-            var info = service.GetCurrencyInfoAsync("usd", ConfigSettings.PricesToCheck).Result;
-            RenderCryptoPrices(info);
-
-            // Start a 30-second countdown
-            for (var i = 30; i > 0; i--)
-            {
-                System.Console.SetCursorPosition(0, System.Console.CursorTop);
-                System.Console.Write($"Refreshing in {i} seconds... ");
-                await Task.Delay(1000); // Wait for 1 second
-            }
-
-            System.Console.Clear(); // Clear the console for the next update
-        }
-    }
-
-
-    public static void RenderCryptoPrices(CoinInfo[] coins)
+    public void RenderCryptoPrices(CoinInfo[] coins)
     {
         Document doc = new();
 
