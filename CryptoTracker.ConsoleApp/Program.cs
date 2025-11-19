@@ -1,57 +1,49 @@
-﻿// Other using statements...
-
-using Console.Services;
 using CryptoTracker.ConsoleApp.CoinStatusRenderingService;
-using CryptoTracker.Core.Infrastructure.Configuration;
+using CryptoTracker.ConsoleApp.Services;
+using CryptoTracker.Core.Abstractions;
+using CryptoTracker.Core.Configuration;
+using CryptoTracker.Core.Services.Bitcoin;
+using CryptoTracker.Core.Services.CryptoPriceServices;
 using CryptoTracker.Core.Services.Electrum;
+using CryptoTracker.Core.Services.EthereumBalanceServices;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-// ...
+var builder = Host.CreateApplicationBuilder(args);
 
-CoinGeckoService service = new();
-var client = new ElectrumCryptoWalletTracker();
+// Configure configuration
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-while (true)
+// Configure options
+builder.Services.Configure<CryptoTrackerOptions>(builder.Configuration);
+
+// Configure logging
+builder.Services.AddLogging(logging =>
 {
-    var info = await service.GetCurrencyInfoAsync("usd", ConfigSettings.PricesToCheck);
-    TrackerConsolerRenderer.RenderCryptoPrices(info);
+    logging.ClearProviders();
+    logging.AddConsole();
+    logging.SetMinimumLevel(LogLevel.Information);
+});
 
-    if (ConfigSettings.EthereumAddressesToMonitor.Any())
-    {
-        var balances =
-            await EtherscanBalanceChecker.GetEthereumBalanceAsync(ConfigSettings.EthereumAddressesToMonitor.ToArray());
-        System.Console.WriteLine("\n--- Ethereum Balances ---");
-        foreach (var (address, balance) in ConfigSettings.EthereumAddressesToMonitor.Zip(balances))
-            System.Console.WriteLine($"Ethereum balance for {address}: {balance}");
+// Register HTTP clients
+builder.Services.AddHttpClient<ICryptoPriceService, CoinGeckoService>();
+builder.Services.AddHttpClient<IBatchEthereumBalanceService, EtherscanBalanceService>();
 
-        var ethereumPrice = info.FirstOrDefault(r => r.Name == "Ethereum")?.CurrentPrice ?? 0;
-        System.Console.WriteLine($"    In USD: {balances.Sum(decimal.Parse) * ethereumPrice:C2}");
-    }
+// Register services
+builder.Services.AddSingleton<IElectrumClientProvider, ElectrumServerProvider>();
+builder.Services.AddSingleton<IWalletTracker, ElectrumCryptoWalletTracker>();
+builder.Services.AddSingleton<IEthereumBalanceService, InfuraBalanceLookupService>();
+builder.Services.AddSingleton<IConsoleRenderer, TrackerConsoleRenderer>();
 
-    if (ConfigSettings.XPubKeys.Any(key => key.Xpub.Length > 4))
-    {
-        var bitcoinPrice = info.FirstOrDefault(r => r.Name == "Bitcoin")?.CurrentPrice ?? 0;
-        System.Console.WriteLine("\n--- Bitcoin Wallet Values ---");
-        foreach (var key in ConfigSettings.XPubKeys.Where(key => key.Xpub.Length > 4))
-        {
-            var valueOfWallet = await client.GetWalletBalanceAsync(key.Xpub, key.ScriptPubKeyType);
+// Register application
+builder.Services.AddSingleton<CryptoTrackerApplication>();
 
-            System.Console.WriteLine($"\nWallet ({key.Xpub}) Value:");
-            System.Console.WriteLine($"    In BTC: {valueOfWallet:N8}");
-            System.Console.WriteLine($"    In USD: {valueOfWallet * bitcoinPrice:C2}");
-        }
-    }
+var host = builder.Build();
 
-    // Refresh timer
-    await RenderRefreshTimer(30);
-    System.Console.Clear();
-}
-
-async Task RenderRefreshTimer(int seconds)
-{
-    for (var i = seconds; i > 0; i--)
-    {
-        System.Console.SetCursorPosition(0, System.Console.CursorTop);
-        System.Console.Write($"Refreshing in {i} seconds... ");
-        await Task.Delay(1000);
-    }
-}
+// Run the application
+var app = host.Services.GetRequiredService<CryptoTrackerApplication>();
+await app.RunAsync();

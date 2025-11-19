@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Console.Services;
+namespace CryptoTracker.Core.Services.CryptoPriceServices;
 
 public class CoinInfo
 {
