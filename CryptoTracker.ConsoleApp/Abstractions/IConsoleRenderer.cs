@@ -1,6 +1,6 @@
 using CryptoTracker.Core.Services.CryptoPriceServices;
 
-namespace CryptoTracker.ConsoleApp.CoinStatusRenderingService;
+namespace CryptoTracker.ConsoleApp.Abstractions;
 
 /// <summary>
 /// Renders cryptocurrency information to the console.
@@ -11,5 +11,5 @@ public interface IConsoleRenderer
     /// Renders cryptocurrency price information in a formatted table.
     /// </summary>
     /// <param name="coins">Array of coin information to display.</param>
-    void RenderCryptoPrices(CoinInfo[] coins);
+    void RenderCryptoPrices(CoinGeckoMarketData[] coins);
 }

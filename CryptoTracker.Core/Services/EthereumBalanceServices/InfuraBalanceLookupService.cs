@@ -44,4 +44,31 @@ public class InfuraBalanceLookupService : IEthereumBalanceService
             throw;
         }
     }
+
+    public async Task<Dictionary<string, decimal>> GetBalancesAsync(IEnumerable<string> addresses)
+    {
+        var addressList = addresses.ToList();
+        if (!addressList.Any())
+            throw new ArgumentException("At least one address must be provided.", nameof(addresses));
+
+        _logger.LogDebug("Fetching balances for {Count} Ethereum addresses", addressList.Count);
+
+        var balances = new Dictionary<string, decimal>();
+
+        foreach (var address in addressList)
+        {
+            try
+            {
+                var balance = await GetBalanceAsync(address);
+                balances[address] = balance;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching balance for address {Address}", address);
+                balances[address] = 0;
+            }
+        }
+
+        return balances;
+    }
 }

@@ -17,5 +17,5 @@ public interface ICryptoPriceService
     /// </summary>
     /// <param name="vsCurrency">The currency to price against (e.g., "usd").</param>
     /// <param name="ids">Comma-separated list of coin IDs.</param>
-    Task<CoinInfo[]> GetCurrencyInfoAsync(string vsCurrency, string ids);
+    Task<CoinGeckoMarketData[]> GetCurrencyInfoAsync(string vsCurrency, string ids);
 }

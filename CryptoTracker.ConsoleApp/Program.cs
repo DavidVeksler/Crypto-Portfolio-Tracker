@@ -1,4 +1,5 @@
-using CryptoTracker.ConsoleApp.CoinStatusRenderingService;
+using CryptoTracker.ConsoleApp.Abstractions;
+using CryptoTracker.ConsoleApp.Rendering;
 using CryptoTracker.ConsoleApp.Services;
 using CryptoTracker.Core.Abstractions;
 using CryptoTracker.Core.Configuration;
@@ -31,12 +32,14 @@ builder.Services.AddLogging(logging =>
 
 // Register HTTP clients
 builder.Services.AddHttpClient<ICryptoPriceService, CoinGeckoService>();
-builder.Services.AddHttpClient<IBatchEthereumBalanceService, EtherscanBalanceService>();
+builder.Services.AddHttpClient<IEthereumBalanceService, EtherscanBalanceService>();
+
+// Register caching
+builder.Services.AddMemoryCache();
 
 // Register services
 builder.Services.AddSingleton<IElectrumClientProvider, ElectrumServerProvider>();
 builder.Services.AddSingleton<IWalletTracker, ElectrumCryptoWalletTracker>();
-builder.Services.AddSingleton<IEthereumBalanceService, InfuraBalanceLookupService>();
 builder.Services.AddSingleton<IConsoleRenderer, TrackerConsoleRenderer>();
 
 // Register application

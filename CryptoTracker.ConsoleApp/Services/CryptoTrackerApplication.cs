@@ -1,7 +1,8 @@
+using CryptoTracker.ConsoleApp.Abstractions;
 using CryptoTracker.Core.Abstractions;
 using CryptoTracker.Core.Configuration;
 using CryptoTracker.Core.Constants;
-using CryptoTracker.ConsoleApp.CoinStatusRenderingService;
+using CryptoTracker.Core.Services.CryptoPriceServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +14,7 @@ namespace CryptoTracker.ConsoleApp.Services;
 public class CryptoTrackerApplication
 {
     private readonly ICryptoPriceService _priceService;
-    private readonly IBatchEthereumBalanceService _ethereumBalanceService;
+    private readonly IEthereumBalanceService _ethereumBalanceService;
     private readonly IWalletTracker _walletTracker;
     private readonly CryptoTrackerOptions _options;
     private readonly IConsoleRenderer _consoleRenderer;
@@ -21,7 +22,7 @@ public class CryptoTrackerApplication
 
     public CryptoTrackerApplication(
         ICryptoPriceService priceService,
-        IBatchEthereumBalanceService ethereumBalanceService,
+        IEthereumBalanceService ethereumBalanceService,
         IWalletTracker walletTracker,
         IOptions<CryptoTrackerOptions> options,
         IConsoleRenderer consoleRenderer,
@@ -79,24 +80,24 @@ public class CryptoTrackerApplication
         }
     }
 
-    private async Task DisplayEthereumBalancesAsync(Core.Services.CryptoPriceServices.CoinInfo[] cryptoInfo)
+    private async Task DisplayEthereumBalancesAsync(CoinGeckoMarketData[] cryptoInfo)
     {
-        var balances = await _ethereumBalanceService.GetEthereumBalanceAsync(
-            _options.Ethereum.AddressesToMonitor.ToArray());
+        var balances = await _ethereumBalanceService.GetBalancesAsync(_options.Ethereum.AddressesToMonitor);
 
         Console.WriteLine("\n--- Ethereum Balances ---");
 
-        foreach (var (address, balance) in _options.Ethereum.AddressesToMonitor.Zip(balances))
+        foreach (var (address, balance) in balances)
         {
-            Console.WriteLine($"Ethereum balance for {address}: {balance}");
+            Console.WriteLine($"Ethereum balance for {address}: {balance:N8} ETH");
         }
 
         var ethereumPrice = cryptoInfo.FirstOrDefault(r => r.Name == "Ethereum")?.CurrentPrice ?? 0;
-        var totalUsdValue = balances.Sum(decimal.Parse) * ethereumPrice;
-        Console.WriteLine($"    Total in USD: {totalUsdValue:C2}");
+        var totalEthBalance = balances.Values.Sum();
+        var totalUsdValue = totalEthBalance * ethereumPrice;
+        Console.WriteLine($"    Total: {totalEthBalance:N8} ETH (${totalUsdValue:N2})");
     }
 
-    private async Task DisplayBitcoinBalancesAsync(Core.Services.CryptoPriceServices.CoinInfo[] cryptoInfo)
+    private async Task DisplayBitcoinBalancesAsync(CoinGeckoMarketData[] cryptoInfo)
     {
         var bitcoinPrice = cryptoInfo.FirstOrDefault(r => r.Name == "Bitcoin")?.CurrentPrice ?? 0;
         Console.WriteLine("\n--- Bitcoin Wallet Values ---");

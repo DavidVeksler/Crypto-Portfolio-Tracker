@@ -1,8 +1,8 @@
-﻿using System.Diagnostics;
-using CryptoTracker.Core.Abstractions;
+﻿using CryptoTracker.Core.Abstractions;
 using CryptoTracker.Core.Constants;
 using CryptoTracker.Core.Services.Bitcoin;
 using ElectrumXClient;
+using Microsoft.Extensions.Caching.Memory;
 using NBitcoin;
 using NBitcoin.Crypto;
 using NBitcoin.DataEncoders;
@@ -14,37 +14,43 @@ namespace CryptoTracker.Core.Services.Electrum;
 /// </summary>
 public class ElectrumCryptoWalletTracker : IWalletTracker
 {
-    private static readonly Dictionary<string, (int LastUsedIndex, DateTime Timestamp)> _addressIndexCache = new();
+    private readonly IMemoryCache _cache;
     private readonly IElectrumClientProvider _clientProvider;
     private readonly ILogger<ElectrumCryptoWalletTracker> _logger;
-    private readonly IAddressGenerator _addressGenerator;
 
-    public ElectrumCryptoWalletTracker(IElectrumClientProvider clientProvider,
-        ILogger<ElectrumCryptoWalletTracker> logger)
+    public ElectrumCryptoWalletTracker(
+        IElectrumClientProvider clientProvider,
+        ILogger<ElectrumCryptoWalletTracker> logger,
+        IMemoryCache cache)
     {
         _clientProvider = clientProvider;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<int> GetLastUsedAddressIndexAsync(string xpubKey, ScriptPubKeyType keyType)
     {
         _logger.LogDebug("Getting last used address index for XPubKey: {XPubKey}", xpubKey);
 
-        if (_addressIndexCache.TryGetValue(xpubKey, out var cacheEntry))
+        var cacheKey = $"AddressIndex_{xpubKey}";
+        if (_cache.TryGetValue(cacheKey, out int cachedIndex))
         {
-            _logger.LogDebug("Found cached entry for XPubKey: {XPubKey}", xpubKey);
-            if ((DateTime.UtcNow - cacheEntry.Timestamp).TotalMinutes < AppConstants.Blockchain.AddressIndexCacheTimeoutMinutes)
-            {
-                _logger.LogDebug("Using cached value for XPubKey: {XPubKey}", xpubKey);
-                return cacheEntry.LastUsedIndex;
-            }
+            _logger.LogDebug("Using cached value for XPubKey: {XPubKey}", xpubKey);
+            return cachedIndex;
         }
 
         _logger.LogDebug("No valid cache found for XPubKey: {XPubKey}. Performing search.", xpubKey);
         var lastActiveIndex = await SearchLastUsedIndex(xpubKey, keyType);
         _logger.LogInformation("Last active index for XPubKey {XPubKey}: {Index}", xpubKey, lastActiveIndex);
 
-        if (lastActiveIndex != -1) CacheAddressIndex(xpubKey, lastActiveIndex);
+        if (lastActiveIndex != -1)
+        {
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(AppConstants.Blockchain.AddressIndexCacheTimeoutMinutes));
+            _cache.Set(cacheKey, lastActiveIndex, cacheOptions);
+            _logger.LogDebug("Cached last used index {Index} for XPubKey: {XPubKey}", lastActiveIndex, xpubKey);
+        }
+
         return lastActiveIndex;
     }
 
@@ -121,12 +127,6 @@ public class ElectrumCryptoWalletTracker : IWalletTracker
         var balanceResponse = await client.GetBlockchainScripthashGetBalance(reversedSha);
 
         return long.Parse(balanceResponse.Result.Confirmed) + long.Parse(balanceResponse.Result.Unconfirmed);
-    }
-
-    private void CacheAddressIndex(string xpubKey, int index)
-    {
-        _logger.LogDebug("Caching last used index {Index} for XPubKey: {XPubKey}", index, xpubKey);
-        _addressIndexCache[xpubKey] = (index, DateTime.UtcNow);
     }
 
     private static string GetReversedShaHexString(string publicAddress)
