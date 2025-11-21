@@ -1,6 +1,4 @@
-using System.Diagnostics;
-using Console.Ethereum;
-using CryptoTracker.Core.Infrastructure.Configuration;
+using CryptoTracker.Core.Services.Bitcoin;
 using NBitcoin;
 
 namespace Tests;
@@ -8,41 +6,43 @@ namespace Tests;
 [TestFixture]
 public class CryptoTests
 {
-    [SetUp]
-    public void Initialize()
+    [Test]
+    public void BitcoinAddressGenerator_GeneratesValidAddress()
     {
-        // Initialization code here, if any
+        // Example xpub key for testing
+        const string testXpub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8";
+
+        var generator = new BitcoinAddressGenerator(testXpub);
+        var address = generator.GenerateAddress(0, ScriptPubKeyType.Legacy);
+
+        // Assert that the generated address is valid and not empty
+        Assert.That(address, Is.Not.Null);
+        Assert.That(address, Is.Not.Empty);
+        Assert.That(address, Does.StartWith("1")); // Legacy addresses start with 1
     }
 
     [Test]
-    public void BitcoinExtPubKey_GeneratesValidAddress()
+    public void BitcoinAddressGenerator_GeneratesSegwitAddress()
     {
-        var key = new BitcoinExtPubKey("", Network.Main);
-        var address = key.Derive(new KeyPath("m")).GetPublicKey().GetAddress(ScriptPubKeyType.Legacy, Network.Main);
+        const string testXpub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8";
 
-        // You should replace Assert.Pass() with an actual assertion that validates the result
-        Assert.Pass();
+        var generator = new BitcoinAddressGenerator(testXpub);
+        var address = generator.GenerateAddress(0, ScriptPubKeyType.Segwit);
+
+        // Assert that the generated address is valid and is a bech32 address
+        Assert.That(address, Is.Not.Null);
+        Assert.That(address, Is.Not.Empty);
+        Assert.That(address, Does.StartWith("bc1")); // Segwit addresses start with bc1
     }
 
     [Test]
-    public void EthereumBalanceLookup_ReturnsBalance_ForKnownAddress()
+    public void BitcoinAddressGenerator_ThrowsOnNegativeIndex()
     {
-        var balance = new InfuraBalanceLookupService()
-            .GetBalanceAsync(ConfigSettings.EthereumAddressesToMonitor.First()).Result;
-        Debug.WriteLine(balance);
+        const string testXpub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8";
 
-        // Add appropriate assertions to validate the balance
+        var generator = new BitcoinAddressGenerator(testXpub);
+
+        // Assert that negative index throws ArgumentOutOfRangeException
+        Assert.Throws<ArgumentOutOfRangeException>(() => generator.GenerateAddress(-1, ScriptPubKeyType.Legacy));
     }
-
-    [Test]
-    public void EtherscanBalanceLookup_ReturnsBalance_ForSampleEthereumAddress()
-    {
-        var balance = new InfuraBalanceLookupService()
-            .GetBalanceAsync(ConfigSettings.EthereumAddressesToMonitor.First()).Result;
-        Debug.WriteLine(balance);
-
-        // Add appropriate assertions to validate the balance
-    }
-
-    // Additional test methods as required
 }

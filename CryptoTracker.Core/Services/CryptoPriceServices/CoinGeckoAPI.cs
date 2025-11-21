@@ -31,10 +31,10 @@ public class CoinGeckoService : ICryptoPriceService
         return await FetchAsync<string[]>("/api/v3/simple/supported_vs_currencies");
     }
 
-    public async Task<CoinInfo[]> GetCurrencyInfoAsync(string vsCurrency, string ids)
+    public async Task<CoinGeckoMarketData[]> GetCurrencyInfoAsync(string vsCurrency, string ids)
     {
         var requestParams = $"/api/v3/coins/markets?vs_currency={vsCurrency}&ids={ids}";
-        return await FetchAsync<CoinInfo[]>(requestParams);
+        return await FetchAsync<CoinGeckoMarketData[]>(requestParams);
     }
 
     private async Task<T> FetchAsync<T>(string requestUri)

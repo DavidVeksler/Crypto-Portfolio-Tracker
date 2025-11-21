@@ -2,7 +2,10 @@
 
 namespace CryptoTracker.Core.Services.CryptoPriceServices;
 
-public class CoinInfo
+/// <summary>
+/// Represents market data for a cryptocurrency from CoinGecko API.
+/// </summary>
+public class CoinGeckoMarketData
 {
     [JsonProperty("id")] public required string Id { get; set; }
 

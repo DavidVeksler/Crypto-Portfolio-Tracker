@@ -1,15 +1,16 @@
 using Alba.CsConsoleFormat;
+using CryptoTracker.ConsoleApp.Abstractions;
 using CryptoTracker.Core.Services.CryptoPriceServices;
 using Document = Alba.CsConsoleFormat.Document;
 
-namespace CryptoTracker.ConsoleApp.CoinStatusRenderingService;
+namespace CryptoTracker.ConsoleApp.Rendering;
 
 /// <summary>
 /// Console renderer for cryptocurrency price information.
 /// </summary>
 public class TrackerConsoleRenderer : IConsoleRenderer
 {
-    public void RenderCryptoPrices(CoinInfo[] coins)
+    public void RenderCryptoPrices(CoinGeckoMarketData[] coins)
     {
         Document doc = new();
 
