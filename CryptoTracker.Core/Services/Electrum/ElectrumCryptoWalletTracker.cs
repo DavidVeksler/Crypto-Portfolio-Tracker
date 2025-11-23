@@ -1,5 +1,6 @@
 ﻿using CryptoTracker.Core.Abstractions;
 using CryptoTracker.Core.Constants;
+using CryptoTracker.Core.Functional;
 using CryptoTracker.Core.Services.Bitcoin;
 using ElectrumXClient;
 using Microsoft.Extensions.Caching.Memory;
@@ -62,55 +63,91 @@ public class ElectrumCryptoWalletTracker : IWalletTracker
         return lastActiveIndex == -1 ? 0 : await CalculateTotalBalance(xpub, scriptPubKeyType, lastActiveIndex);
     }
 
+    /// <summary>
+    /// Functional refactored version: Searches for the last used address index using immutable state.
+    /// Uses async sequence composition with no mutable variables.
+    /// </summary>
     private async Task<int> SearchLastUsedIndex(string xpubKey, ScriptPubKeyType keyType, int addressGap = AppConstants.Blockchain.AddressGapLimit)
     {
         _logger.LogDebug("Starting search for last used index for XPubKey: {XPubKey}", xpubKey);
 
         var addressGenerator = new BitcoinAddressGenerator(xpubKey);
-        var lastActiveIndex = -1;
-        var consecutiveUnusedCount = 0;
-        var currentIndex = 0;
         var client = await _clientProvider.GetClientAsync();
 
-        while (consecutiveUnusedCount < addressGap)
+        // Pure function: Creates address check result
+        var checkAddress = async (int index) =>
         {
-            var address = addressGenerator.GenerateAddress(currentIndex, keyType);
-            _logger.LogTrace("Checking address at index {Index}: {Address}", currentIndex, address);
+            var address = addressGenerator.GenerateAddress(index, keyType);
+            _logger.LogTrace("Checking address at index {Index}: {Address}", index, address);
 
             var historyResponse = await client.GetBlockchainScripthashGetHistory(GetReversedShaHexString(address));
             var hasTransactions = historyResponse.Result.Count > 0;
 
             if (hasTransactions)
-            {
-                _logger.LogDebug("Address at index {Index} has transactions", currentIndex);
-                lastActiveIndex = currentIndex;
-                consecutiveUnusedCount = 0;
-            }
-            else
-            {
-                consecutiveUnusedCount++;
-            }
+                _logger.LogDebug("Address at index {Index} has transactions", index);
 
-            currentIndex++;
-        }
+            return (index, hasTransactions);
+        };
 
-        _logger.LogInformation("Search completed for XPubKey {XPubKey}. Last used index: {Index}", xpubKey,
-            lastActiveIndex);
+        // Immutable state record for tracking consecutive unused addresses
+        var initialState = new AddressSearchState(LastActiveIndex: -1, ConsecutiveUnused: 0);
+
+        // Generate infinite sequence of address checks with accumulated state
+        var addressCheckSequence = AsyncSequence.UnfoldIndexed(
+            initialState,
+            async (index, state) =>
+            {
+                var (_, hasTransactions) = await checkAddress(index);
+
+                // Pure state transformation - no mutations
+                var newState = hasTransactions
+                    ? new AddressSearchState(LastActiveIndex: index, ConsecutiveUnused: 0)
+                    : state with { ConsecutiveUnused = state.ConsecutiveUnused + 1 };
+
+                return (newState, newState);
+            });
+
+        // Take elements until we've found the gap limit of consecutive unused addresses
+        var finalState = await addressCheckSequence
+            .TakeWhile(state => state.ConsecutiveUnused < addressGap)
+            .LastOrNone(state => true);
+
+        var lastActiveIndex = finalState
+            .Map(state => state.LastActiveIndex)
+            .GetOrDefault(-1);
+
+        _logger.LogInformation("Search completed for XPubKey {XPubKey}. Last used index: {Index}", xpubKey, lastActiveIndex);
         return lastActiveIndex;
     }
 
-    private async Task<decimal> CalculateTotalBalance(string xpub, ScriptPubKeyType scriptPubKeyType,
-        int lastActiveIndex)
+    // Immutable record for address search state - replaces mutable variables
+    private record AddressSearchState(int LastActiveIndex, int ConsecutiveUnused);
+
+    /// <summary>
+    /// Functional refactored version: Calculates total balance using immutable fold pattern with parallelization.
+    /// No mutable accumulator - uses LINQ Aggregate for functional composition.
+    /// </summary>
+    private async Task<decimal> CalculateTotalBalance(string xpub, ScriptPubKeyType scriptPubKeyType, int lastActiveIndex)
     {
-        long totalBalanceInSatoshis = 0;
         var addressGenerator = new BitcoinAddressGenerator(xpub);
 
-        for (var i = 0; i <= lastActiveIndex; i++)
-        {
-            var address = addressGenerator.GenerateAddress(i, scriptPubKeyType);
-            var balanceForAddress = await GetBalanceForAddress(address);
-            totalBalanceInSatoshis += balanceForAddress;
-        }
+        // Pure function: Generate address at index
+        var generateAddress = (int index) => addressGenerator.GenerateAddress(index, scriptPubKeyType);
+
+        // Create immutable sequence of indices
+        var indices = Enumerable.Range(0, lastActiveIndex + 1);
+
+        // Parallel execution: Map each index to balance fetch task (no sequential awaits)
+        var balanceTasks = indices
+            .Select(generateAddress)
+            .Select(GetBalanceForAddress)
+            .ToArray();
+
+        // Execute all balance fetches in parallel
+        var balances = await Task.WhenAll(balanceTasks);
+
+        // Pure functional fold: Aggregate balances with no mutable state
+        var totalBalanceInSatoshis = balances.Aggregate(0L, (sum, balance) => sum + balance);
 
         var totalBalanceInBTC = SatoshiToBTC(totalBalanceInSatoshis);
         _logger.LogInformation("Total balance calculated in BTC: {Balance}", totalBalanceInBTC);

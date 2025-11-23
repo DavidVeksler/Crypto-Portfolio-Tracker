@@ -1,4 +1,5 @@
 using CryptoTracker.Core.Abstractions;
+using CryptoTracker.Core.Functional;
 using ElectrumXClient;
 using Microsoft.Extensions.Logging;
 
@@ -28,38 +29,61 @@ public class ElectrumServerProvider : IElectrumClientProvider
         return _client;
     }
 
+    /// <summary>
+    /// Functional refactored version: Uses pure retry logic with Result type instead of nested loops.
+    /// No early returns or exception-based control flow in the main logic.
+    /// </summary>
     private async Task<Client> ConnectToServerAsync()
     {
         var servers = DefaultElectrumServers.DefaultServers.OrderBy(_ => Guid.NewGuid()).ToList();
         _logger.LogDebug("Attempting to connect to {Count} Electrum servers", servers.Count);
 
-        foreach (var server in servers)
+        // Pure function: Creates server endpoint from server and port
+        var serverEndpoints = servers
+            .SelectMany(server => server.Value.Select(port => (server: server.Key, port: port.Value)))
+            .ToList();
+
+        // Pure function: Attempts connection to a single endpoint
+        var tryConnectToEndpoint = async ((string server, string port) endpoint) =>
         {
-            foreach (var port in server.Value)
+            _logger.LogDebug("Trying to connect to {Server} on port {Port}", endpoint.server, endpoint.port);
+
+            return await Retry.TryAsync(async () =>
             {
-                try
+                var client = new Client(endpoint.server, int.Parse(endpoint.port), true);
+                var version = await client.GetServerVersion();
+
+                if (version is not null)
                 {
-                    _logger.LogDebug("Trying to connect to {Server} on port {Port}", server.Key, port.Value);
-
-                    _client = new Client(server.Key, int.Parse(port.Value), true);
-                    var version = await _client.GetServerVersion();
-
-                    if (version is not null)
-                    {
-                        _logger.LogInformation("Successfully connected to {Server} on port {Port}", server.Key,
-                            port.Value);
-                        return _client;
-                    }
+                    _logger.LogInformation("Successfully connected to {Server} on port {Port}",
+                        endpoint.server, endpoint.port);
+                    return client;
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to connect to {Server} on port {Port}", server.Key, port.Value);
-                    _client = null;
-                }
-            }
-        }
 
-        _logger.LogError("Unable to connect to any Electrum server");
-        throw new InvalidOperationException("Unable to connect to any Electrum server.");
+                throw new InvalidOperationException($"Server {endpoint.server}:{endpoint.port} returned null version");
+            });
+        };
+
+        // Functional composition: Create sequence of retry operations
+        var connectionAttempts = Retry.CreateRetrySequence(serverEndpoints, tryConnectToEndpoint);
+
+        // Execute retry sequence until first success
+        var result = await Retry.FirstSuccessWithLog(
+            connectionAttempts,
+            onAttempt: msg => _logger.LogDebug(msg),
+            onFailure: msg => _logger.LogWarning(msg));
+
+        // Pattern matching on Result: Extract client or throw exception
+        return result.Match(
+            onSuccess: client =>
+            {
+                _client = client; // Update mutable state only on success
+                return client;
+            },
+            onFailure: error =>
+            {
+                _logger.LogError("Unable to connect to any Electrum server: {Error}", error);
+                throw new InvalidOperationException($"Unable to connect to any Electrum server: {error}");
+            });
     }
 }
