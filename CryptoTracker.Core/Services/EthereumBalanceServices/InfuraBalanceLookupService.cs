@@ -87,7 +87,7 @@ public class InfuraBalanceLookupService : IEthereumBalanceService
         var balances = balanceResults
             .Select(result => result.Match(
                 onSuccess: tuple => tuple,
-                onFailure: _ => (result.Value?.address ?? "", 0m)))
+                onFailure: _ => ("", 0m)))
             .Where(tuple => !string.IsNullOrEmpty(tuple.Item1))
             .ToDictionary(
                 keySelector: tuple => tuple.Item1,

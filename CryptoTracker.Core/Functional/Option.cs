@@ -161,7 +161,11 @@ public static class OptionExtensions
     /// </summary>
     public static Option<T> FirstOrNone<T>(this IEnumerable<T> items, Func<T, bool> predicate)
     {
-        var found = items.FirstOrDefault(predicate);
-        return found != null ? Option<T>.Some(found) : Option<T>.None();
+        foreach (var item in items)
+        {
+            if (predicate(item))
+                return Option<T>.Some(item);
+        }
+        return Option<T>.None();
     }
 }

@@ -4,6 +4,7 @@ using CryptoTracker.Core.Functional;
 using CryptoTracker.Core.Services.Bitcoin;
 using ElectrumXClient;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using NBitcoin;
 using NBitcoin.Crypto;
 using NBitcoin.DataEncoders;
